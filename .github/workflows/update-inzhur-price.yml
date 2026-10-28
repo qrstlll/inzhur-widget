@@ -40,20 +40,39 @@ jobs:
           response.raise_for_status()
           text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
           text = text.replace("\xa0", " ").replace("\u202f", " ")
-          match = re.search(
-              r"([0-9][0-9\s]*[.,][0-9]+)\s*₴\s*ВЧА на сертифікат",
+          # Prefer NAV + 1%, as described in INZHUR's pricing terms.
+          nav_match = re.search(
+              r"([0-9][0-9\\s]*[.,][0-9]+)\\s*₴\\s*ВЧА\\s*на\\s*сертифікат",
               text,
               re.IGNORECASE,
           )
-          if not match:
-              raise SystemExit("Could not find official NAV per certificate; leaving portfolio.json unchanged.")
 
-          nav_text = re.sub(r"\s+", "", match.group(1)).replace(",", ".")
-          nav = Decimal(nav_text)
-          # INZHUR's published pricing description says purchase price = NAV + 1%.
-          purchase_price = (nav * Decimal("1.01")).quantize(
-              Decimal("0.01"), rounding=ROUND_HALF_UP
-          )
+          if nav_match:
+              nav_text = re.sub(r"\\s+", "", nav_match.group(1)).replace(",", ".")
+              nav = Decimal(nav_text)
+              purchase_price = (nav * Decimal("1.01")).quantize(
+                  Decimal("0.01"), rounding=ROUND_HALF_UP
+              )
+              print(f"Found NAV per certificate: {nav}; calculated purchase price: {purchase_price}")
+          else:
+              # Some page responses omit the NAV block. The page's "Початкова інвестиція"
+              # figure is already the displayed entry price, so do not add another 1%.
+              price_match = re.search(
+                  r"Початкова інвестиція\\s*(?:від\\s*)?([0-9][0-9\\s]*[.,][0-9]+)\\s*₴",
+                  text,
+                  re.IGNORECASE,
+              )
+              if not price_match:
+                  preview = text[:1200]
+                  raise SystemExit(
+                      "Could not find NAV or the displayed initial investment price. "
+                      f"Page text preview: {preview!r}. portfolio.json was not changed."
+                  )
+              price_text = re.sub(r"\\s+", "", price_match.group(1)).replace(",", ".")
+              purchase_price = Decimal(price_text).quantize(
+                  Decimal("0.01"), rounding=ROUND_HALF_UP
+              )
+              print(f"NAV block unavailable; using page's displayed initial investment price: {purchase_price}")
 
           path = Path("portfolio.json")
           data = json.loads(path.read_text(encoding="utf-8"))
