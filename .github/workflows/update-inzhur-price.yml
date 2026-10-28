@@ -39,16 +39,16 @@ jobs:
           )
           response.raise_for_status()
           text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
-          text = text.replace("\\xa0", " ").replace("\\u202f", " ")
+          text = text.replace("\xa0", " ").replace("\u202f", " ")
           match = re.search(
-              r"([0-9][0-9\\s]*[.,][0-9]+)\\s*₴\\s*ВЧА на сертифікат",
+              r"([0-9][0-9\s]*[.,][0-9]+)\s*₴\s*ВЧА на сертифікат",
               text,
               re.IGNORECASE,
           )
           if not match:
               raise SystemExit("Could not find official NAV per certificate; leaving portfolio.json unchanged.")
 
-          nav_text = re.sub(r"\\s+", "", match.group(1)).replace(",", ".")
+          nav_text = re.sub(r"\s+", "", match.group(1)).replace(",", ".")
           nav = Decimal(nav_text)
           # INZHUR's published pricing description says purchase price = NAV + 1%.
           purchase_price = (nav * Decimal("1.01")).quantize(
@@ -63,7 +63,7 @@ jobs:
           else:
               data["price"] = float(purchase_price)
               path.write_text(
-                  json.dumps(data, ensure_ascii=False, indent=2) + "\\n",
+                  json.dumps(data, ensure_ascii=False, indent=2) + "\n",
                   encoding="utf-8",
               )
               print(f"Updated purchase price: {old_price} -> {purchase_price}")
