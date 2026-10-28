@@ -42,13 +42,13 @@ jobs:
           text = text.replace("\xa0", " ").replace("\u202f", " ")
           # Prefer NAV + 1%, as described in INZHUR's pricing terms.
           nav_match = re.search(
-              r"([0-9][0-9\\s]*[.,][0-9]+)\\s*₴\\s*ВЧА\\s*на\\s*сертифікат",
+              r"([0-9][0-9\s]*[.,][0-9]+)\s*₴\s*ВЧА\s*на\s*сертифікат",
               text,
               re.IGNORECASE,
           )
 
           if nav_match:
-              nav_text = re.sub(r"\\s+", "", nav_match.group(1)).replace(",", ".")
+              nav_text = re.sub(r"\s+", "", nav_match.group(1)).replace(",", ".")
               nav = Decimal(nav_text)
               purchase_price = (nav * Decimal("1.01")).quantize(
                   Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -58,7 +58,7 @@ jobs:
               # Some page responses omit the NAV block. The page's "Початкова інвестиція"
               # figure is already the displayed entry price, so do not add another 1%.
               price_match = re.search(
-                  r"Початкова інвестиція\\s*(?:від\\s*)?([0-9][0-9\\s]*[.,][0-9]+)\\s*₴",
+                  r"Початкова інвестиція\s*(?:від\s*)?([0-9][0-9\s]*[.,][0-9]+)\s*₴",
                   text,
                   re.IGNORECASE,
               )
@@ -68,7 +68,7 @@ jobs:
                       "Could not find NAV or the displayed initial investment price. "
                       f"Page text preview: {preview!r}. portfolio.json was not changed."
                   )
-              price_text = re.sub(r"\\s+", "", price_match.group(1)).replace(",", ".")
+              price_text = re.sub(r"\s+", "", price_match.group(1)).replace(",", ".")
               purchase_price = Decimal(price_text).quantize(
                   Decimal("0.01"), rounding=ROUND_HALF_UP
               )
